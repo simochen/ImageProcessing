@@ -1,0 +1,6 @@
+﻿  main.cpp
+d:\workspace\imageprocessing\hw2\hw2\main.cpp(12): warning C4244: '*=': conversion from 'double' to 'float', possible loss of data
+d:\workspace\imageprocessing\hw2\hw2\main.cpp(65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\workspace\imageprocessing\hw2\hw2\main.cpp(67): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  hw2.vcxproj -> D:\workspace\ImageProcessing\hw2\Debug\hw2.exe
+  hw2.vcxproj -> D:\workspace\ImageProcessing\hw2\Debug\hw2.pdb (Full PDB)
