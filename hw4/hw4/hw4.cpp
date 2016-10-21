@@ -7,31 +7,38 @@
 using namespace cv;
 using namespace std;
 
+//加入椒盐噪声
 Mat addNoise(const Mat &srcImage, double p) {
 	Mat dstImage;
 	srcImage.copyTo(dstImage);
 	for (int i = 0; i < dstImage.rows; i++) {
 		for (int j = 0; j < dstImage.cols; j++) {
+			//生成 [0,1) 的随机数
 			double randnum;
 			randnum = rand() / double(RAND_MAX);
+			//加入胡椒噪声
 			if (randnum < 0.5 * p) dstImage.at<Vec3b>(i, j) = { 0, 0, 0 };
+			//加入盐噪声
 			else if (randnum < p) dstImage.at<Vec3b>(i, j) = { 255, 255, 255 };
 		}
 	}
 	return dstImage;
 }
 
+//算术均值滤波
 Mat aritMeanFilter(const Mat &srcImage, Size ksize) {
 	Mat expImage, dstImage, imageROI;
 	srcImage.copyTo(expImage);
 	int a, b;
 	a = (ksize.width - 1) / 2;
 	b = (ksize.height - 1) / 2;
-	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_CONSTANT, Scalar::all(0));
+	//边界反射扩展，目标图像上的像素坐标对应于窗口区域的左上角位置
+	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_REFLECT);
 	dstImage = Mat(srcImage.size(), srcImage.type());
 	for (int i = 0; i < dstImage.rows; i++) {
 		for (int j = 0; j < dstImage.cols; j++) {
 			imageROI = expImage(Rect(j, i, ksize.width, ksize.height));
+			//计算算数均值
 			Vec4b m = (Vec4b)mean(imageROI);
 			dstImage.at<Vec3b>(i, j) = { m[0], m[1], m[2] };
 		}
@@ -39,54 +46,131 @@ Mat aritMeanFilter(const Mat &srcImage, Size ksize) {
 	return dstImage;
 }
 
+//几何均值滤波
 Mat geoMeanFilter(const Mat &srcImage, Size ksize) {
-	Mat expImage, dstImage, imageROI;
+	Mat expImage, dstImage;
 	srcImage.copyTo(expImage);
 	int a, b;
 	a = (ksize.width - 1) / 2;
 	b = (ksize.height - 1) / 2;
-	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_CONSTANT, Scalar::all(1));
+	//边界反射扩展，目标图像上的像素坐标对应于ROI的左上角
+	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_REFLECT);
 	dstImage = Mat(srcImage.size(), srcImage.type());
 	for (int i = 0; i < dstImage.rows; i++) {
 		for (int j = 0; j < dstImage.cols; j++) {
-			Vec3d product = {1, 1, 1};
+			//初始化乘积
+			Vec3d product = { 1, 1, 1 };
 			for (int m = 0; m < ksize.height; m++) {
 				for (int n = 0; n < ksize.width; n++) {
-					Vec3b a = { 1, 1, 1 };
-					if (expImage.at<Vec3b>(i + m, j + n)[0] != 0) a = expImage.at<Vec3b>(i + m, j + n);
-					product[0] *= a[0];
-					product[1] *= a[1];
-					product[2] *= a[2];
+					//将胡椒噪声取反，变为盐噪声
+					if (expImage.at<Vec3b>(i + m, j + n)[0] == 0) expImage.at<Vec3b>(i + m, j + n) = {255, 255, 255};
+					//累乘像素灰度值
+					product[0] *= expImage.at<Vec3b>(i + m, j + n)[0];
+					product[1] *= expImage.at<Vec3b>(i + m, j + n)[1];
+					product[2] *= expImage.at<Vec3b>(i + m, j + n)[2];
 				}
 			}
+			//计算几何均值
 			Vec3b c;
 			double b = 1.0 / (ksize.width * ksize.height);
 			c[0] = (uchar)pow(product[0], b);
 			c[1] = (uchar)pow(product[1], b);
 			c[2] = (uchar)pow(product[2], b);
-			dstImage.at<Vec3b>(i, j) = { c[0], c[1], c[2] };
+			dstImage.at<Vec3b>(i, j) = c;
 		}
 	}
 	return dstImage;
 }
 
+//谐波均值滤波
 Mat harMeanFilter(const Mat &srcImage, Size ksize) {
+	Mat expImage, dstImage;
+	srcImage.copyTo(expImage);
+	int a, b;
+	a = (ksize.width - 1) / 2;
+	b = (ksize.height - 1) / 2;
+	//边界反射扩展，目标图像上的像素坐标对应于ROI的左上角
+	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_REFLECT);
+	dstImage = Mat(srcImage.size(), srcImage.type());
+	for (int i = 0; i < dstImage.rows; i++) {
+		for (int j = 0; j < dstImage.cols; j++) {
+			//初始化分母（灰度值倒数之和）
+			Vec3d den = { 0, 0, 0 };
+			for (int m = 0; m < ksize.height; m++) {
+				for (int n = 0; n < ksize.width; n++) {
+					//将胡椒噪声取反，变为盐噪声
+					if (expImage.at<Vec3b>(i + m, j + n)[0] == 0) expImage.at<Vec3b>(i + m, j + n) = {255, 255, 255};
+					//累加灰度值倒数
+					den[0] += 1.0 / expImage.at<Vec3b>(i + m, j + n)[0];
+					den[1] += 1.0 / expImage.at<Vec3b>(i + m, j + n)[1];
+					den[2] += 1.0 / expImage.at<Vec3b>(i + m, j + n)[2];
+				}
+			}
+			//计算谐波均值
+			Vec3b c;
+			c[0] = (uchar)(ksize.width * ksize.height / den[0]);
+			c[1] = (uchar)(ksize.width * ksize.height / den[1]);
+			c[2] = (uchar)(ksize.width * ksize.height / den[2]);
+			dstImage.at<Vec3b>(i, j) = c;
+		}
+	}
+	return dstImage;
+}
+
+//在直方图中计算中值
+int calcMedium(const Mat &hist, int total) {
+	//计算中值时，停止计数值为像素总数的 1/2
+	int stopCount = total / 2;
+	float s = 0;
+	for (int i = 0; i < hist.size[0]; i++) {
+		s += hist.at<float>(i);
+		if (s > stopCount) return i;
+	}
+}
+
+//中值滤波
+Mat medianFilter(const Mat &srcImage, Size ksize) {
 	Mat expImage, dstImage, imageROI;
 	srcImage.copyTo(expImage);
 	int a, b;
 	a = (ksize.width - 1) / 2;
 	b = (ksize.height - 1) / 2;
-	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_CONSTANT, Scalar::all(0));
+	//边界反射扩展，目标图像上的像素坐标对应于ROI的左上角
+	copyMakeBorder(expImage, expImage, b, b, a, a, BORDER_REFLECT);
 	dstImage = Mat(srcImage.size(), srcImage.type());
 	for (int i = 0; i < dstImage.rows; i++) {
+		imageROI = expImage(Rect(0, i, ksize.width, ksize.height));
+		//将三通道的ROI分割为三个单通道图像
+		Mat ROIplane[3];
+		split(imageROI, ROIplane);
+		//计算每个单通道图像的直方图
+		Mat hist[3];
+		int channel = 0;
+		int histSize = 256;
+		int dims = 1;
+		float hranges[] = { 0, 255 };
+		const float *ranges[] = { hranges };
+		calcHist(&ROIplane[0], 1, &channel, Mat(), hist[0], dims, &histSize, ranges);
+		calcHist(&ROIplane[1], 1, &channel, Mat(), hist[1], dims, &histSize, ranges);
+		calcHist(&ROIplane[2], 1, &channel, Mat(), hist[2], dims, &histSize, ranges);
 		for (int j = 0; j < dstImage.cols; j++) {
-			imageROI = expImage(Rect(j, i, ksize.width, ksize.height));
-			Mat mv[3];
-			split(imageROI, mv);
+			if (j > 0) {
+				//更新直方图，删去原ROI最左边的列，添加右边一列
+				for (int k = 0; k < ksize.height; k++) {
+					hist[0].at<float>(expImage.at<Vec3b>(i + k, j - 1)[0]) -= 1;
+					hist[0].at<float>(expImage.at<Vec3b>(i + k, j + ksize.width - 1)[0]) += 1;
+					hist[1].at<float>(expImage.at<Vec3b>(i + k, j - 1)[1]) -= 1;
+					hist[1].at<float>(expImage.at<Vec3b>(i + k, j + ksize.width - 1)[1]) += 1;
+					hist[2].at<float>(expImage.at<Vec3b>(i + k, j - 1)[2]) -= 1;
+					hist[2].at<float>(expImage.at<Vec3b>(i + k, j + ksize.width - 1)[2]) += 1;
+				}
+			}
+			//计算中值
 			Vec3b m;
-			m[0] = (uchar)((ksize.width * ksize.height) / sum(1.0 / (mv[0] + 1))[0]);
-			m[1] = (uchar)((ksize.width * ksize.height) / sum(1.0 / (mv[1] + 1))[0]);
-			m[2] = (uchar)((ksize.width * ksize.height) / sum(1.0 / (mv[2] + 1))[0]);
+			int total = ksize.width * ksize.height;
+			m[0] = calcMedium(hist[0], total);
+			m[1] = calcMedium(hist[1], total);
+			m[2] = calcMedium(hist[2], total);
 			dstImage.at<Vec3b>(i, j) = m;
 		}
 	}
@@ -94,15 +178,27 @@ Mat harMeanFilter(const Mat &srcImage, Size ksize) {
 }
 
 int main() {
+	//设置随机数种子
 	srand((unsigned)time(NULL));
+	//读取原图
 	Mat srcImage = imread("lena.jpg");
 	imshow("Source Image", srcImage);
+	//加入椒盐噪声
 	Mat noiImage = addNoise(srcImage, 0.1);
 	imshow("Noisy Image", noiImage);
+	//算数均值滤波
 	Mat aritImage = aritMeanFilter(noiImage, Size(3, 3));
-	imshow("Arithmetry Mean Filtered Image", aritImage);
-	Mat geoImage = harMeanFilter(noiImage, Size(3, 3));
-	imshow("Geometry Mean Filtered Image", geoImage);
+	imshow("Arithmetic Mean Filtered Image", aritImage);
+	//几何均值滤波
+	Mat geoImage = geoMeanFilter(noiImage, Size(3, 3));
+	imshow("Geometric Mean Filtered Image", geoImage);
+	//谐波均值滤波
+	Mat harImage = harMeanFilter(noiImage, Size(3, 3));
+	imshow("Harmonic Mean Filtered Image", harImage);
+	//中值滤波
+	Mat midImage = medianFilter(noiImage, Size(3, 3));
+	imshow("Median Filtered Image", midImage);
 	waitKey(0);
+
 	return 0;
 }
