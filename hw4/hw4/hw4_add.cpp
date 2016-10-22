@@ -57,7 +57,7 @@ Mat motionBlur(Size msize, double a, double b, double T) {
 }
 
 //维纳滤波
-Mat wienerFilter(const Mat &blurMat, const Mat &degMat, double K = 0.1) {
+Mat wienerFilter(const Mat &blurMat, const Mat &degMat, double K = 0.01) {
 	Mat blur_plane[2], deg_plane[2], res_plane[2];
 	//分割2通道的矩阵，提取实部和虚部
 	split(blurMat, blur_plane);
@@ -90,12 +90,12 @@ int main() {
 	blur_spec[2] = performDFT(blur_plane[2]);
 	//生成运动模糊退化函数
 	Mat H;
-	H = motionBlur(Size(blur_spec[0].cols, blur_spec[0].rows), -0.0004, 0.0001, 1);
+	H = motionBlur(Size(blur_spec[0].cols, blur_spec[0].rows), 0.0005, -0.0001, 1);
 	//维纳滤波，傅里叶逆变换
 	Mat res_plane[3];
-	res_plane[0] = performIDFT(wienerFilter(blur_spec[0], H, 0.1));
-	res_plane[1] = performIDFT(wienerFilter(blur_spec[1], H, 0.1));
-	res_plane[2] = performIDFT(wienerFilter(blur_spec[2], H, 0.1));
+	res_plane[0] = performIDFT(wienerFilter(blur_spec[0], H, 0.02));
+	res_plane[1] = performIDFT(wienerFilter(blur_spec[1], H, 0.02));
+	res_plane[2] = performIDFT(wienerFilter(blur_spec[2], H, 0.02));
 	//合成三通道图像
 	Mat resImage;
 	merge(res_plane, 3, resImage);
