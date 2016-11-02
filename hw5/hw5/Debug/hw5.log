@@ -1,0 +1,4 @@
+﻿  hw5.cpp
+d:\workspace\imageprocessing\hw5\hw5\hw5.cpp(51): warning C4244: '=': conversion from 'float' to 'uchar', possible loss of data
+  hw5.vcxproj -> D:\workspace\ImageProcessing\hw5\Debug\hw5.exe
+  hw5.vcxproj -> D:\workspace\ImageProcessing\hw5\Debug\hw5.pdb (Partial PDB)
