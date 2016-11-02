@@ -1,5 +1,2 @@
-﻿  hw4_add.cpp
-d:\workspace\imageprocessing\hw4\hw4\hw4_add.cpp(52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-d:\workspace\imageprocessing\hw4\hw4\hw4_add.cpp(53): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-  hw4.vcxproj -> D:\workspace\ImageProcessing\hw4\Debug\hw4.exe
+﻿  hw4.vcxproj -> D:\workspace\ImageProcessing\hw4\Debug\hw4.exe
   hw4.vcxproj -> D:\workspace\ImageProcessing\hw4\Debug\hw4.pdb (Partial PDB)
