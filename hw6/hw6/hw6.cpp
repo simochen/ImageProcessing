@@ -96,7 +96,9 @@ int main()
 	printMat(diff);
 
 	double m = mean(abs(diff))[0];
-	cout << "平均值：" << m << endl;
+	cout << "误差绝对值平均：" << m << endl;
+	double rmse = sqrt(mean(diff.mul(diff))[0]);
+	cout << "均方根误差：" << rmse << endl;
 	getchar();
 	return 0;
 }
